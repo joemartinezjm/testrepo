@@ -2,8 +2,6 @@ name: build-and-push-image
 
 on:
   push:
-    branches:
-      - main
 
 env:
   REGISTRY: ghcr.io
