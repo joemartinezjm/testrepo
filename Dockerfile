@@ -22,8 +22,6 @@ RUN apt-get update && \
     git && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-ENV AZ_DIST=$(lsb_release -cs)
-
 # Install Azure CLI
 RUN curl -sLS https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft.gpg && \
 echo "Types: deb\nURIs: https://packages.microsoft.com/repos/azure-cli/\nSuites: $(lsb_release -cs)\nComponents: main\nArchitectures: $(dpkg --print-architecture)\nSigned-by: /etc/apt/keyrings/microsoft.gpg" | tee /etc/apt/sources.list.d/azure-cli.sources > /dev/null && \
