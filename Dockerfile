@@ -36,9 +36,17 @@ RUN echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install Azure CLI
-RUN curl -sL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft.gpg && \
-    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft.gpg] https://packages.microsoft.com/repos/azure-cli/ jammy main" | tee /etc/apt/sources.list.d/azure-cli.list && \
+RUN mkdir -p /etc/apt/keyrings && \
+    curl -sLS https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /etc/apt/keyrings/microsoft.gpg && \
+    chmod go+r /etc/apt/keyrings/microsoft.gpg && \
+    echo "Types: deb\n\
+URIs: https://packages.microsoft.com/repos/azure-cli/\n\
+Suites: noble\n\
+Components: main\n\
+Architectures: $(dpkg --print-architecture)\n\
+Signed-By: /etc/apt/keyrings/microsoft.gpg" > /etc/apt/sources.list.d/azure-cli.sources && \
     apt-get update && \
+    apt-cache policy azure-cli && \
     apt-get install -y --no-install-recommends azure-cli=${AZURE_CLI_VERSION} && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
