@@ -25,9 +25,9 @@ RUN apt-get update && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install Azure CLI
-RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /usr/share/keyrings/microsoft-archive-keyring.gpg && \
-    chmod go+r /usr/share/keyrings/microsoft-archive-keyring.gpg && \
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/microsoft-archive-keyring.gpg] https://packages.microsoft.com/repos/azure-cli/ noble main" | tee /etc/apt/sources.list.d/azure-cli.list && \
+RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /etc/apt/trusted.gpg.d/microsoft.gpg > /dev/null \
+    chmod go+r /etc/apt/trusted.gpg.d/microsoft.gpg && \
+    echo "Types: deb\nURIs: https://packages.microsoft.com/repos/azure-cli/\nSuites: $(lsb_release -cs)\nComponents: main\nArchitectures: $(dpkg --print-architecture)\nSigned-by: /etc/apt/trusted.gpg.d/microsoft.gpg" | tee /etc/apt/sources.list.d/azure-cli.sources && \
     apt-get update && \
     apt-get install -y --no-install-recommends azure-cli=${AZURE_CLI_VERSION} && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
