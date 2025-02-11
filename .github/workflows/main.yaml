@@ -19,44 +19,37 @@ jobs:
       - name: Detect changed folders with Dockerfiles
         id: filter
         run: |
-          # Ensure we have a valid commit history (handle new branches & first commits)
+          # Ensure we have a valid base reference for comparison
           if git rev-parse --verify ${{ github.event.before }} >/dev/null 2>&1; then
             BASE_REF=${{ github.event.before }}
           else
-            echo "Previous commit not found, treating as first commit."
-            BASE_REF=$(git rev-list --max-parents=0 HEAD)  # Get first commit
+            echo "Previous commit not found, using last commit instead."
+            BASE_REF=$(git rev-parse HEAD^ || echo HEAD)
           fi
 
           echo "Comparing changes from $BASE_REF to ${{ github.sha }}"
 
-          # Find all directories containing a Dockerfile (ignore .git and hidden folders)
-          ALL_FOLDERS=$(find . -mindepth 1 -maxdepth 1 -type d ! -name ".git" ! -name ".*" | while read dir; do
-            if [ -f "$dir/Dockerfile" ]; then
-              echo "$dir"
-            fi
-          done | jq -R -s -c 'split("\n")[:-1]')
-
-          # Detect changed folders (since last commit) but only directories
+          # Detect changed folders (since last commit) but only directories with a Dockerfile
           CHANGED_FOLDERS=$(git diff --name-only $BASE_REF ${{ github.sha }} | awk -F/ '{print $1}' | sort -u | while read dir; do
             if [ -d "$dir" ] && [ -f "$dir/Dockerfile" ]; then
               echo "$dir"
             fi
           done | jq -R -s -c 'split("\n")[:-1]')
 
-          # Handle newly added folders (that didn't exist in the previous commit)
-          NEW_FOLDERS=$(git ls-tree -r --name-only HEAD | awk -F/ '{print $1}' | sort -u | while read dir; do
-            if [ -d "$dir" ] && [ -f "$dir/Dockerfile" ]; then
+          # Detect newly added folders containing a Dockerfile
+          NEW_FOLDERS=$(git ls-tree -d --name-only HEAD | while read dir; do
+            if [ -f "$dir/Dockerfile" ]; then
               echo "$dir"
             fi
           done | jq -R -s -c 'split("\n")[:-1]')
 
-          # Combine changed and new folders
+          # Combine changed and new folders, ensuring uniqueness
           COMBINED_FOLDERS=$(jq -c -n --argjson a "$CHANGED_FOLDERS" --argjson b "$NEW_FOLDERS" '$a + $b | unique')
 
-          # Use changed folders if detected, otherwise use all folders
+          # Use changed folders if detected, otherwise use an empty list
           if [[ "$COMBINED_FOLDERS" == "[]" ]]; then
-            echo "No specific changes detected, building all images."
-            echo "matrix=$ALL_FOLDERS" >> "$GITHUB_OUTPUT"
+            echo "No changes detected, skipping build."
+            echo "matrix=[]" >> "$GITHUB_OUTPUT"
           else
             echo "Changed or newly added folders detected: $COMBINED_FOLDERS"
             echo "matrix=$COMBINED_FOLDERS" >> "$GITHUB_OUTPUT"
