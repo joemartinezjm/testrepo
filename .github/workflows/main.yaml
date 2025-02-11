@@ -20,23 +20,35 @@ jobs:
         id: filter
         run: |
           # Ensure we have a valid commit history (handle new branches & first commits)
-          if [ -z "$(git rev-parse --verify ${{ github.event.before }})" ]; then
+          if git rev-parse --verify ${{ github.event.before }} >/dev/null 2>&1; then
+            BASE_REF=${{ github.event.before }}
+          else
             echo "Previous commit not found, treating as first commit."
             BASE_REF=$(git rev-list --max-parents=0 HEAD)  # Get first commit
-          else
-            BASE_REF=${{ github.event.before }}
           fi
 
           echo "Comparing changes from $BASE_REF to ${{ github.sha }}"
 
           # Find all directories containing a Dockerfile (ignore .git and hidden folders)
-          ALL_FOLDERS=$(find . -mindepth 1 -maxdepth 1 -type d ! -name ".git" ! -name ".*" | sed 's|^\./||' | jq -R -s -c 'split("\n")[:-1]')
+          ALL_FOLDERS=$(find . -mindepth 1 -maxdepth 1 -type d ! -name ".git" ! -name ".*" | while read dir; do
+            if [ -f "$dir/Dockerfile" ]; then
+              echo "$dir"
+            fi
+          done | jq -R -s -c 'split("\n")[:-1]')
 
-          # Detect changed folders (since last commit)
-          CHANGED_FOLDERS=$(git diff --name-only $BASE_REF ${{ github.sha }} | awk -F/ '{print $1}' | sort -u | grep -Ev '^(\.git|\.github)$' | jq -R -s -c 'split("\n")[:-1]')
+          # Detect changed folders (since last commit) but only directories
+          CHANGED_FOLDERS=$(git diff --name-only $BASE_REF ${{ github.sha }} | awk -F/ '{print $1}' | sort -u | while read dir; do
+            if [ -d "$dir" ] && [ -f "$dir/Dockerfile" ]; then
+              echo "$dir"
+            fi
+          done | jq -R -s -c 'split("\n")[:-1]')
 
           # Handle newly added folders (that didn't exist in the previous commit)
-          NEW_FOLDERS=$(git ls-tree -r --name-only HEAD | awk -F/ '{print $1}' | sort -u | grep -Ev '^(\.git|\.github)$' | jq -R -s -c 'split("\n")[:-1]')
+          NEW_FOLDERS=$(git ls-tree -r --name-only HEAD | awk -F/ '{print $1}' | sort -u | while read dir; do
+            if [ -d "$dir" ] && [ -f "$dir/Dockerfile" ]; then
+              echo "$dir"
+            fi
+          done | jq -R -s -c 'split("\n")[:-1]')
 
           # Combine changed and new folders
           COMBINED_FOLDERS=$(jq -c -n --argjson a "$CHANGED_FOLDERS" --argjson b "$NEW_FOLDERS" '$a + $b | unique')
