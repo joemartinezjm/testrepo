@@ -47,7 +47,7 @@ jobs:
           push: true
           platforms: linux/amd64,linux/arm64
           tags: |
-            "${{ github.repository }}:latest"
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
       - name: Install Cosign
         uses: sigstore/cosign-installer@main
