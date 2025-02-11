@@ -19,11 +19,11 @@ jobs:
       - name: Detect changed folders with Dockerfiles
         id: filter
         run: |
-          # Find all directories containing a Dockerfile
-          ALL_FOLDERS=$(find . -mindepth 1 -maxdepth 1 -type d | sed 's|^\./||' | jq -R -s -c 'split("\n")[:-1]')
+          # Find all directories containing a Dockerfile (ignore .git and hidden folders)
+          ALL_FOLDERS=$(find . -mindepth 1 -maxdepth 1 -type d ! -name ".git" ! -name ".*" | sed 's|^\./||' | jq -R -s -c 'split("\n")[:-1]')
 
           # Detect changed folders (since last commit)
-          CHANGED_FOLDERS=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | awk -F/ '{print $1}' | sort -u | jq -R -s -c 'split("\n")[:-1]')
+          CHANGED_FOLDERS=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | awk -F/ '{print $1}' | sort -u | grep -Ev '^(\.git|\.github)$' | jq -R -s -c 'split("\n")[:-1]')
 
           # Use changed folders if detected, otherwise use all folders
           if [[ "$CHANGED_FOLDERS" == "[]" ]]; then
