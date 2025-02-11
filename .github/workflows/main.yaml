@@ -49,15 +49,15 @@ jobs:
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
-      - name: Install Cosign
-        uses: sigstore/cosign-installer@main
+      # - name: Install Cosign
+      #   uses: sigstore/cosign-installer@main
 
-      - name: Sign the container image with Cosign
-        run: |
-          cosign sign --yes --key env://COSIGN_PRIVATE_KEY \
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.push.outputs.digest }}
-        env:
-          COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+      # - name: Sign the container image with Cosign
+      #   run: |
+      #     cosign sign --yes --key env://COSIGN_PRIVATE_KEY \
+      #       ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.push.outputs.digest }}
+      #   env:
+      #     COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
 
       - name: Generate Build Provenance Attestation
         uses: actions/attest-build-provenance@v1
