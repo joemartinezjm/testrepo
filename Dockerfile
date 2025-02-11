@@ -47,7 +47,8 @@ RUN curl -LO "https://dl.k8s.io/release/v${KUBECTL_VERSION}/bin/linux/${TARGETAR
 
 # Install Python
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends python${PYTHON_VERSION} python3-pip python3-venv python3-dev && \
+    apt-get install -y --no-install-recommends python${PYTHON_VERSION} && \
+    apt-get install -y --no-install-recommends python3-pip python3-venv python3-dev && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
