@@ -10,9 +10,6 @@ env:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-    container:
-      image: docker:dind  # Run GitHub Actions inside DinD
-      options: --privileged  # Allow Docker-in-Docker
     permissions:
       contents: read
       packages: write
@@ -46,10 +43,11 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
+          sbom: true
           push: true
           platforms: linux/amd64,linux/arm64
-          tags: ${{ steps.meta.outputs.tags }},${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: |
+            "${{ github.repository }}:latest"
 
       - name: Install Cosign
         uses: sigstore/cosign-installer@main

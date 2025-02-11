@@ -3,7 +3,7 @@ FROM ubuntu:24.04
 
 
 # Set environment variables (versions as of 2025-02-07, python  3.12.3 latest for container OS)
-ENV AZURE_CLI_VERSION=2.68.0-1~noble
+ENV AZURE_CLI_VERSION=2.46.0-1~noble
 ENV TERRAFORM_VERSION=1.10.5
 ENV TERRAGRUNT_VERSION=0.72.8
 ENV KUBECTL_VERSION=1.32.1
