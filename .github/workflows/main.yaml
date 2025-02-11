@@ -19,42 +19,21 @@ jobs:
       - name: Detect changed folders with Dockerfiles
         id: filter
         run: |
-          # Ensure we have a valid base reference for comparison
-          if git rev-parse --verify ${{ github.event.before }} >/dev/null 2>&1; then
-            BASE_REF=${{ github.event.before }}
+          # Find all directories containing a Dockerfile (ignore .git and hidden folders)
+          ALL_FOLDERS=$(find . -mindepth 1 -maxdepth 1 -type d ! -name ".git" ! -name ".*" | sed 's|^\./||' | jq -R -s -c 'split("\n")[:-1]')
+
+          # Detect changed folders (since last commit)
+          CHANGED_FOLDERS=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | awk -F/ '{print $1}' | sort -u | grep -Ev '^(\.git|\.github)$' | jq -R -s -c 'split("\n")[:-1]')
+
+          # Use changed folders if detected, otherwise use all folders
+          if [[ "$CHANGED_FOLDERS" == "[]" ]]; then
+            echo "No specific changes detected, building all images."
+            echo "matrix=$ALL_FOLDERS" >> "$GITHUB_OUTPUT"
           else
-            echo "Previous commit not found, using last commit instead."
-            BASE_REF=$(git rev-parse HEAD^ || echo HEAD)
+            echo "Changed folders detected: $CHANGED_FOLDERS"
+            echo "matrix=$CHANGED_FOLDERS" >> "$GITHUB_OUTPUT"
           fi
-
-          echo "Comparing changes from $BASE_REF to ${{ github.sha }}"
-
-          # Detect changed folders (since last commit) but only directories with a Dockerfile
-          CHANGED_FOLDERS=$(git diff --name-only $BASE_REF ${{ github.sha }} | awk -F/ '{print $1}' | sort -u | while read dir; do
-            if [ -d "$dir" ] && [ -f "$dir/Dockerfile" ]; then
-              echo "$dir"
-            fi
-          done | jq -R -s -c 'split("\n")[:-1]')
-
-          # Detect newly added folders containing a Dockerfile
-          NEW_FOLDERS=$(git ls-tree -d --name-only HEAD | while read dir; do
-            if [ -f "$dir/Dockerfile" ]; then
-              echo "$dir"
-            fi
-          done | jq -R -s -c 'split("\n")[:-1]')
-
-          # Combine changed and new folders, ensuring uniqueness
-          COMBINED_FOLDERS=$(jq -c -n --argjson a "$CHANGED_FOLDERS" --argjson b "$NEW_FOLDERS" '$a + $b | unique')
-
-          # Use changed folders if detected, otherwise use an empty list
-          if [[ "$COMBINED_FOLDERS" == "[]" ]]; then
-            echo "No changes detected, skipping build."
-            echo "matrix=[]" >> "$GITHUB_OUTPUT"
-          else
-            echo "Changed or newly added folders detected: $COMBINED_FOLDERS"
-            echo "matrix=$COMBINED_FOLDERS" >> "$GITHUB_OUTPUT"
-          fi
-
+          
   build-and-push:
     runs-on: ubuntu-latest
     needs: detect-changes
@@ -69,6 +48,9 @@ jobs:
       attestations: write
       
     steps:
+      - name: Convert Repository Name to Lowercase
+        run: echo "REPO_NAME_LC=${REPO_NAME,,}" >> "$GITHUB_ENV"
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -83,7 +65,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.REPO_NAME }}/${{ matrix.folder }}
+          images: ${{ env.REGISTRY }}/${{ env.REPO_NAME_LC }}/${{ matrix.folder }}
           
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -98,27 +80,10 @@ jobs:
           context: ${{ matrix.folder }}
           sbom: true
           push: true
-          provenance: mode=max
           platforms: linux/amd64,linux/arm64
           tags: |
-            ${{ env.REGISTRY }}/${{ env.REPO_NAME }}/${{ matrix.folder }}:latest
+            ${{ env.REGISTRY }}/${{ env.REPO_NAME_LC }}/${{ matrix.folder }}:latest
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           load: false
-
-      # - name: Install Cosign
-      #   uses: sigstore/cosign-installer@main
-
-      # - name: Sign the container image with Cosign
-      #   run: |
-      #     cosign sign --yes --key env://COSIGN_PRIVATE_KEY \
-      #       ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.push.outputs.digest }}
-      #   env:
-      #     COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
-
-      # - name: Generate Build Provenance Attestation
-      #   uses: actions/attest-build-provenance@v1
-      #   with:
-      #     subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-      #     subject-digest: ${{ steps.push.outputs.digest }}
