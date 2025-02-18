@@ -4,6 +4,9 @@ on:
   push:
   workflow_dispatch:  # Allows manual trigger
 
+permissions:
+  issues: write
+
 jobs:
   automated_steps:
     runs-on: ubuntu-latest
@@ -25,7 +28,7 @@ jobs:
         uses: trstringer/manual-approval@v1
         with:
           secret: ${{ secrets.GITHUB_TOKEN }}
-          approvers: myteam
+          approvers: joemartinezjm
           minimum-approvals: 1
 
       - name: Step 4 - Manual Trigger Needed
