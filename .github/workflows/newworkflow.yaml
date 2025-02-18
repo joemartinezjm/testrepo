@@ -24,6 +24,7 @@ jobs:
       - name: Wait for approval
         uses: trstringer/manual-approval@v1
         with:
+          secret: ${{ secrets.GITHUB_TOKEN }}
           approvers: myteam
           minimum-approvals: 1
 
