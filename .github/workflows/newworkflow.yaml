@@ -21,5 +21,11 @@ jobs:
     runs-on: ubuntu-latest
     needs: automated_steps  # Waits for previous job
     steps:
+      - name: Wait for approval
+        uses: trstringer/manual-approval@v1
+        with:
+          approvers: myteam
+          minimum-approvals: 1
+
       - name: Step 4 - Manual Trigger Needed
         run: echo "Waiting for manual approval..."

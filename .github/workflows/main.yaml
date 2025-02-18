@@ -1,7 +1,7 @@
 name: Build and Push Container Images
 
 on:
-  pull_request:
+  push:
 
 env:
   REGISTRY: ghcr.io
